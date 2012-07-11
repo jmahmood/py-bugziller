@@ -166,7 +166,7 @@ class bugGet(genericBugzillaFunction):
 
 class bugUpdate(genericBugzillaFunction):
     def required_args(self):
-        return ['id']
+        return ['ids']
 
     def additional_validation(self, kwargs):
         self.validation_functions_init()
