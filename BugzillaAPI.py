@@ -6,8 +6,11 @@ import datetime
 
 
 class genericBugzillaFunction(object):
+    REMOTE_METHOD_NAME = "unknown"
+
     def __init__(self, connection):
         self.connection = connection
+
 
     def validation_functions_init(self):
         self.validation_functions = {
@@ -64,11 +67,15 @@ class genericBugzillaFunction(object):
             return []
         return [arg for arg in required_args if arg not in kwargs]
 
-    def execute(self, **kwargs):
-        raise NotImplementedError
-
     def valueErrorText(self):
         return "To call this function, you must pass the following: %s. \n\n\nYou only passed %s"
+
+    def execute(self, **kwargs):
+        try:
+            ret = self.method(self.REMOTE_METHOD_NAME, kwargs)
+            return True, ret
+        except xmlrpclib.Fault, err:
+            return False, err
 
     def __call__(self, **kwargs):
         if not self.valid_args(kwargs):
@@ -78,6 +85,8 @@ class genericBugzillaFunction(object):
 
 
 class userGet(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "User.get"
+
     def required_args(self):
         return ['email', 'id', 'match']
 
@@ -91,80 +100,53 @@ class userGet(genericBugzillaFunction):
             return []
         return required_args
 
-    def execute(self, **kwargs):
-        return self.method("User.get", kwargs)
-
 
 class userExists(userGet):
+    REMOTE_METHOD_NAME = "User.get"
+
     def execute(self, **kwargs):
         return len(self.method("User.get", kwargs)) > 0
 
 
 class userCreate(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "User.create"
+
     def required_args(self):
         return ['email']
-
-    def execute(self, **kwargs):
-        email = kwargs['email']
-        try:
-            ret = self.method("User.offer_account_by_email", kwargs)
-            return True, ret
-        except xmlrpclib.Fault, err:
-            return False, err
 
 
 class userOfferAccountByEmail(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "User.offer_account_by_email"
+
     def required_args(self):
         return ['email']
 
-    def execute(self, **kwargs):
-        email = kwargs['email']
-        try:
-            ret = self.method("User.offer_account_by_email", kwargs)
-            return True, ret
-        except xmlrpclib.Fault, err:
-            return False, err
-
 
 class bugCreate(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "Bug.create"
+
     def required_args(self):
         return ["product", "component", "summary", "version", 
         "description", "op_sys", "platform", "severity", "priority"]
 
-    def execute(self, **kwargs):
-
-        try:
-            ret = self.method("Bug.create", kwargs)
-            return True, ret
-        except xmlrpclib.Fault, err:
-            return False, err
-
 
 class bugAddComment(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "Bug.add_comment"
+
     def required_args(self):
         return ['id', 'comment']
-
-    def execute(self, **kwargs):
-        try:
-            self.method("Bug.add_comment", kwargs)
-            return True, None
-        except xmlrpclib.Fault, err:
-            return False, err
 
 
 class bugGet(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "Bug.get"
+
     def required_args(self):
         return ['id', 'comment']
 
-    def execute(self, **kwargs):
-        try:
-            self.method("Bug.get", kwargs)
-            return True, None
-        except xmlrpclib.Fault, err:
-            return False, err
-
 
 class bugUpdate(genericBugzillaFunction):
+    REMOTE_METHOD_NAME = "Bug.update"
+
     def required_args(self):
         return ['ids']
 
@@ -178,8 +160,4 @@ class bugUpdate(genericBugzillaFunction):
 
     def execute(self, **kwargs):
         self.additional_validation(kwargs)
-        try:
-            ret = self.method("Bug.update", kwargs)
-            return True, ret
-        except xmlrpclib.Fault, err:
-            return False, err
+        return super(bugUpdate, self).execute(kwargs)
