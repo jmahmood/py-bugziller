@@ -25,8 +25,13 @@ except:
 
 """
 class BugzillaConnection(object):
-    def __init__(self):
+    def __init__(self, login=False, password=False):
         self.read_config()
+        if login:
+            self.login = login
+        if password:
+            self.password = password
+
         self.server = xmlrpclib.Server(self.url, 
             transport=CookieTransport());
         success, cause = self.server_login()

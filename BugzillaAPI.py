@@ -4,6 +4,17 @@
 import xmlrpclib
 import datetime
 
+# isinstance doesn't let us use keyword arguments; this makes
+# it harder to pass it as a partial function, etc...
+def kw_instance(obj, type, keys=None):
+    if not keys:
+        return isinstance(obj, type)
+    else:
+        # obj is a dict.
+        # all keys for obj must be in the list "keys".
+        return isinstance(obj, type) and all([k in keys for k in list(obj)])
+
+
 
 class genericBugzillaFunction(object):
     REMOTE_METHOD_NAME = "unknown"
@@ -11,42 +22,42 @@ class genericBugzillaFunction(object):
     def __init__(self, connection):
         self.connection = connection
 
-
     def validation_functions_init(self):
         self.validation_functions = {
-            'alias':partial(isinstance, type=basestring),
-            'assigned_to':partial(isinstance, type=basestring),
-            'blocks':partial(isinstance, type=dict), #add, remove, set
-            'depends_on':partial(isinstance, type=dict), #add, remove, set
-            'cc':partial(isinstance, type=dict), #add, remove
-            'is_cc_accessible':partial(isinstance, type=bool),
-            'comment':partial(isinstance, type=dict), #body, is_private
-            'comment_is_private':partial(isinstance, type=bool),
-            'component':partial(isinstance, type=basestring),
-            'deadline':partial(isinstance, type=datetime.datetime),
-            'dupe_of':partial(isinstance, type=int),
-            'estimated_time':partial(isinstance, type=float),
-            'groups':partial(isinstance, type=dict), #add, remove
-            'keywords':partial(isinstance, type=dict), #add, remove, set
-            'op_sys':partial(isinstance, type=basestring),
-            'platform':partial(isinstance, type=basestring),
-            'priority':partial(isinstance, type=basestring),
-            'product':partial(isinstance, type=basestring),
-            'qa_contact':partial(isinstance, type=basestring),
-            'is_creator_accessible':partial(isinstance, type=bool),
-            'remaining_time':partial(isinstance, type=float), #hours
-            'reset_assigned_to':partial(isinstance, type=bool),
-            'reset_qa_contact':partial(isinstance, type=bool),
-            'resolution':partial(isinstance, type=basestring),
-            'see_also':partial(isinstance, type=dict), #add, remove
-            'severity':partial(isinstance, type=basestring),
-            'status':partial(isinstance, type=basestring),
-            'summary':partial(isinstance, type=basestring),
-            'target_milestone':partial(isinstance, type=basestring),
-            'url':partial(isinstance, type=basestring),
-            'version':partial(isinstance, type=basestring),
-            'whiteboard':partial(isinstance, type=basestring),
-            'work_time':partial(isinstance, type=float),
+            'alias':partial(kw_instance, type=basestring),
+            'assigned_to':partial(kw_instance, type=basestring),
+            'blocks':partial(kw_instance, type=dict, keys=["add", "remove", "set"]), #add, remove, set
+            'depends_on':partial(kw_instance, type=dict, keys=["add", "remove", "set"]), #add, remove, set
+            'cc':partial(kw_instance, type=dict, keys=["add", "remove"]), #add, remove
+            'ids':partial(kw_instance, type=list),
+            'is_cc_accessible':partial(kw_instance, type=bool),
+            'comment':partial(kw_instance, type=dict, keys=["body", "is_private"]), #body, is_private
+            'comment_is_private':partial(kw_instance, type=bool),
+            'component':partial(kw_instance, type=basestring),
+            'deadline':partial(kw_instance, type=datetime.datetime),
+            'dupe_of':partial(kw_instance, type=int),
+            'estimated_time':partial(kw_instance, type=float),
+            'groups':partial(kw_instance, type=dict, keys=["add", "remove"]), #add, remove
+            'keywords':partial(kw_instance, type=dict, keys=["add", "remove", "set"]), #add, remove, set
+            'op_sys':partial(kw_instance, type=basestring),
+            'platform':partial(kw_instance, type=basestring),
+            'priority':partial(kw_instance, type=basestring),
+            'product':partial(kw_instance, type=basestring),
+            'qa_contact':partial(kw_instance, type=basestring),
+            'is_creator_accessible':partial(kw_instance, type=bool),
+            'remaining_time':partial(kw_instance, type=float), #hours
+            'reset_assigned_to':partial(kw_instance, type=bool),
+            'reset_qa_contact':partial(kw_instance, type=bool),
+            'resolution':partial(kw_instance, type=basestring),
+            'see_also':partial(kw_instance, type=dict, keys=["add", "remove"]), #add, remove
+            'severity':partial(kw_instance, type=basestring),
+            'status':partial(kw_instance, type=basestring),
+            'summary':partial(kw_instance, type=basestring),
+            'target_milestone':partial(kw_instance, type=basestring),
+            'url':partial(kw_instance, type=basestring),
+            'version':partial(kw_instance, type=basestring),
+            'whiteboard':partial(kw_instance, type=basestring),
+            'work_time':partial(kw_instance, type=float),
         }
 
     def valid_args(self, kwargs):
@@ -88,24 +99,21 @@ class userGet(genericBugzillaFunction):
     REMOTE_METHOD_NAME = "User.get"
 
     def required_args(self):
-        return ['email', 'id', 'match']
+        return ['names', 'ids', 'match']
 
     def missing_args(self, kwargs):
-        required_args = set(self.required_args)
-        passed_args = set(kwargs)
-
-        # There is an OR requirement here.  If you pass
-        # one or more of the required arguments, you are fine.
-        if len(required_args & passed_args) > 0:
+        required_args = set(self.required_args())
+        passed_args = kwargs
+        if any([pa in required_args for pa in passed_args]):
             return []
-        return required_args
+        return passed_args
 
 
 class userExists(userGet):
     REMOTE_METHOD_NAME = "User.get"
 
     def execute(self, **kwargs):
-        return len(self.method("User.get", kwargs)) > 0
+        return len(self.method(userExists.REMOTE_METHOD_NAME, kwargs)) > 0
 
 
 class userCreate(genericBugzillaFunction):
@@ -113,6 +121,12 @@ class userCreate(genericBugzillaFunction):
 
     def required_args(self):
         return ['email']
+
+class userUpdate(userGet):
+    REMOTE_METHOD_NAME = "User.create"
+
+    def required_args(self):
+        return ['ids', 'names']
 
 
 class userOfferAccountByEmail(genericBugzillaFunction):
