@@ -8,6 +8,8 @@ You may need to modify this file if the cookie names on bugzilla are changed :/
 
 This is setup for Python 2.6 and 2.7.  xmlrpclib changes in Python 3.  
 I may produce a Python3 version of this if there is any demand.
+
+This is modified from code from PyBugz.
 """
 class CookieTransport(xmlrpclib.Transport):
     def __init__(self, SESSION_ID_STRING='PHPSESSID'):
